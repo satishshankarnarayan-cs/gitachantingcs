@@ -17,6 +17,21 @@ type ComprehensionState = {
   notes: string;
 };
 
+
+
+type SubmissionPayload = {
+  timestamp: string;
+  participantName: string;
+  category: string;
+  versesAttempted: number;
+  totalMemoryMistakes: number;
+  totalPronunciationMistakes: number;
+  comprehension1: string;
+  comprehension2: string;
+  comprehension3: string;
+  comprehension4: string;
+};
+
 type Stage = "login" | "participant" | "verse" | "comprehensionPrompt" | "comprehension";
 
 type VerseCard = {
@@ -30,6 +45,7 @@ const categories = ["Memory Child", "Reading", "Memory"];
 const numberOptions = ["0", "1", "2", "3", "4"];
 const comprehensionOptions = ["Correct", "Incorrect"];
 const TOTAL_ITEMS = 23;
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxiOVx7NDiBMT-zOrdogJcq402gJ3e0IvZpqzSf7Fp_WisKQNhWlpcvGRwr8KvuksZM/exec";
 
 const verseCards: VerseCard[] = [
   { id: 0, title: "Intro Verse", slideImage: "/gitaslides/IntroVerse.png", kind: "scored" },
@@ -82,6 +98,58 @@ function createInitialComprehensionState(): Record<number, ComprehensionState> {
     3: { score: "", notes: "" },
     4: { score: "", notes: "" },
   };
+}
+
+function buildSubmissionPayload(
+  participant: Participant,
+  flowItems: VerseCard[],
+  verseScores: Record<number, VerseState>,
+  comprehension: Record<number, ComprehensionState>
+): SubmissionPayload {
+  const scoredItems = flowItems.filter((item) => item.kind === "scored");
+
+  const totalMemoryMistakes = scoredItems.reduce((sum, item) => {
+    return sum + Number(verseScores[item.id]?.memoryMistakes || 0);
+  }, 0);
+
+  const totalPronunciationMistakes = scoredItems.reduce((sum, item) => {
+    return sum + Number(verseScores[item.id]?.pronunciationMistakes || 0);
+  }, 0);
+
+  return {
+    timestamp: new Date().toISOString(),
+    participantName: participant.name,
+    category: participant.category,
+    versesAttempted: scoredItems.length,
+    totalMemoryMistakes,
+    totalPronunciationMistakes,
+    comprehension1: comprehension[1]?.score || "",
+    comprehension2: comprehension[2]?.score || "",
+    comprehension3: comprehension[3]?.score || "",
+    comprehension4: comprehension[4]?.score || "",
+  };
+}
+
+
+
+
+
+async function saveToGoogleSheet(payload: SubmissionPayload): Promise<void> {
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE")) {
+    console.warn("Google Apps Script URL not configured.");
+    return;
+  }
+
+  const response = await fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  void response;
 }
 
 const palette = {
@@ -255,6 +323,8 @@ export default function Page() {
   const [comprehensionIndex, setComprehensionIndex] = useState(1);
   const [comprehension, setComprehension] = useState<Record<number, ComprehensionState>>(createInitialComprehensionState());
   const [lastCompleted, setLastCompleted] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
+  
 
   const flowItems = useMemo(() => getFlowItems(participant.category), [participant.category]);
   const totalItems = flowItems.length;
@@ -282,7 +352,18 @@ export default function Page() {
     setLastCompleted("");
   }
 
-  function finishAndReturn() {
+  async function finishAndReturn() {
+    const payload = buildSubmissionPayload(participant, flowItems, verseScores, comprehension);
+
+    try {
+      setSaveStatus("Saving results to Google Sheet...");
+      await saveToGoogleSheet(payload);
+      setSaveStatus("Saved to Google Sheet.");
+    } catch (error) {
+      console.error(error);
+      setSaveStatus("Could not save to Google Sheet. Please check the Apps Script URL.");
+    }
+
     setLastCompleted(participant.name ? `${participant.name} (${participant.category})` : "Completed");
     setParticipant({ name: "", category: "" });
     setVerseIndex(0);
@@ -408,6 +489,22 @@ export default function Page() {
               <button style={{ ...secondaryButtonStyle(false), width: "100%", marginTop: 18 }} onClick={resetFlow}>
                 Reset Flow
               </button>
+
+              {saveStatus ? (
+                <div
+                  style={{
+                    marginTop: 16,
+                    background: "rgba(255, 250, 241, 0.88)",
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 20,
+                    padding: 14,
+                    color: palette.deepBrown,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {saveStatus}
+                </div>
+              ) : null}
             </div>
 
             <div style={cardStyle()}>
@@ -688,7 +785,7 @@ export default function Page() {
                           setComprehensionIndex(1);
                           setStage("comprehension");
                         } else {
-                          finishAndReturn();
+                          void void finishAndReturn();
                         }
                       }}
                     >
@@ -769,7 +866,7 @@ export default function Page() {
                       style={primaryButtonStyle(false)}
                       onClick={() => {
                         if (comprehensionIndex === 4) {
-                          finishAndReturn();
+                          void void finishAndReturn();
                         } else {
                           setComprehensionIndex(comprehensionIndex + 1);
                         }
