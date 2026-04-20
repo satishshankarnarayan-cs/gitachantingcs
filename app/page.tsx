@@ -26,10 +26,7 @@ type SubmissionPayload = {
   versesAttempted: number;
   totalMemoryMistakes: number;
   totalPronunciationMistakes: number;
-  comprehension1: string;
-  comprehension2: string;
-  comprehension3: string;
-  comprehension4: string;
+  comprehensionMistakes: number;
 };
 
 type Stage = "login" | "participant" | "verse" | "comprehensionPrompt" | "comprehension";
@@ -116,6 +113,11 @@ function buildSubmissionPayload(
     return sum + Number(verseScores[item.id]?.pronunciationMistakes || 0);
   }, 0);
 
+  // ✅ Count incorrect answers
+  const comprehensionMistakes = Object.values(comprehension).reduce((count, item) => {
+    return count + (item.score === "Incorrect" ? 1 : 0);
+  }, 0);
+
   return {
     timestamp: new Date().toISOString(),
     participantName: participant.name,
@@ -123,13 +125,9 @@ function buildSubmissionPayload(
     versesAttempted: scoredItems.length,
     totalMemoryMistakes,
     totalPronunciationMistakes,
-    comprehension1: comprehension[1]?.score || "",
-    comprehension2: comprehension[2]?.score || "",
-    comprehension3: comprehension[3]?.score || "",
-    comprehension4: comprehension[4]?.score || "",
+    comprehensionMistakes,
   };
 }
-
 
 
 
