@@ -42,7 +42,7 @@ const categories = ["Memory Child", "Reading", "Memory"];
 const numberOptions = ["0", "1", "2", "3", "4"];
 const comprehensionOptions = ["Correct", "Incorrect"];
 const TOTAL_ITEMS = 23;
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxiOVx7NDiBMT-zOrdogJcq402gJ3e0IvZpqzSf7Fp_WisKQNhWlpcvGRwr8KvuksZM/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzm_41Uo3jfK-LVg95-WGVeOReuBdYdiv3fqUEOaoCClAFs-fGxfRp0uz4aiUEpU5cr/exec";
 
 const verseCards: VerseCard[] = [
   { id: 0, title: "Intro Verse", slideImage: "/gitaslides/IntroVerse.png", kind: "scored" },
